@@ -1,3 +1,4 @@
 <Solution>
+  <Project Path="MessengerREST_API.Tests/MessengerREST_API.Tests.csproj" Id="2a862cea-9665-41a2-9a60-d2ab4608fc5f" />
   <Project Path="MessengerREST_API/MessengerREST_API.csproj" />
 </Solution>
