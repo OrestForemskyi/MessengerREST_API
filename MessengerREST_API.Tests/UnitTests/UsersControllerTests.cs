@@ -2,15 +2,29 @@
 using MessengerREST_API.Data;
 using MessengerREST_API.DTOs;
 using MessengerREST_API.Models;
+using MessengerREST_API.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
 
 namespace MessengerREST_API.Tests.UnitTests
 {
+    public class MockJwtService : IJwtService
+    {
+        public string GenerateToken(int userId, string username)
+        {
+            return "mock-jwt-token";
+        }
+
+        public DateTime GetTokenExpirationTime()
+        {
+            return DateTime.UtcNow.AddHours(24);
+        }
+    }
+
     public class UsersControllerTests
     {
-        //Віртуальна база даних
+        //Virtual database context and JWT service for testing
         private AppDbContext GetInMemoryDbContext()
         {
             var options = new DbContextOptionsBuilder<AppDbContext>()
@@ -19,23 +33,28 @@ namespace MessengerREST_API.Tests.UnitTests
             return new AppDbContext(options);
         }
 
+        private IJwtService GetMockJwtService()
+        {
+            return new MockJwtService();
+        }
+
         [Fact] 
         public async Task Register_NewUser_ReturnsOkResult()
         {
             // Arrange
             var context = GetInMemoryDbContext();
-            var controller = new UsersController(context);
+            var mockJwtService = GetMockJwtService();
+            var controller = new UsersController(context, mockJwtService);
             var newUserDto = new RegisterUserDto { Username = "TestUser", Password = "password123" };
 
             // Act
             var result = await controller.Register(newUserDto);
 
             // Assert
-            // Чи повернувся статус 200 OK
             var okResult = Assert.IsType<OkObjectResult>(result.Result);
-            // Чи створений юзер
-            var returnedUser = Assert.IsType<User>(okResult.Value);
-            Assert.Equal("TestUser", returnedUser.Username);
+            var returnedAuth = Assert.IsType<AuthResponseDto>(okResult.Value);
+            Assert.Equal("TestUser", returnedAuth.Username);
+            Assert.Equal("mock-jwt-token", returnedAuth.Token);
         }
 
         [Fact]
@@ -43,10 +62,11 @@ namespace MessengerREST_API.Tests.UnitTests
         {
             // Arrange
             var context = GetInMemoryDbContext();
-            context.Users.Add(new User { Username = "ExistingUser", PasswordHash = "hash" });
+            context.Users.Add(new User { Username = "ExistingUser", PasswordHash = BCrypt.Net.BCrypt.HashPassword("hash") });
             await context.SaveChangesAsync();
 
-            var controller = new UsersController(context);
+            var mockJwtService = GetMockJwtService();
+            var controller = new UsersController(context, mockJwtService);
             var duplicateUserDto = new RegisterUserDto { Username = "ExistingUser", Password = "newpassword" };
 
             // Act
