@@ -20,7 +20,7 @@ namespace MessengerREST_API.Data
                 .HasIndex(cu => new { cu.ChatId, cu.UserId })
                 .IsUnique();
 
-            // Налаштування звязків
+            // Set up relationships and cascade delete behavior
             modelBuilder.Entity<Message>()
                 .HasOne(m => m.Chat)
                 .WithMany(c => c.Messages)
